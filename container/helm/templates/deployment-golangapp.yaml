@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "golang-restapi.fullname" . }}
+  labels:
+    {{- include "golang-restapi.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.golang.autoscaling.enabled }}
+  replicas: {{ .Values.golang.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "golang-restapi.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.golang.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "golang-restapi.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.golang.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "golang-restapi.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.golang.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.golang.securityContext | nindent 12 }}
+          image: "{{ .Values.golang.image.repository }}:{{ .Values.golang.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.golang.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          {{- if $.Values.golang.environments }}
+          env:
+          {{- range $.Values.golang.environments }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+          {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.golang.resources | nindent 12 }}
+      {{- with .Values.golang.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.golang.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.golang.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
